@@ -12,6 +12,15 @@ if not os.path.exists('highway_model.pkl'):
 
 app = FastAPI()
 
+from pydantic import BaseModel
+
+class TripInput(BaseModel):
+    make: str
+    model: str
+    road_type: str
+    temperature: float
+    ac_on: bool
+
 
 city_model = joblib.load('city_model.pkl')
 highway_model = joblib.load('highway_model.pkl')
@@ -76,7 +85,7 @@ def predict_consumption(make, model, road_type, temperature, ac_on):
     return adjust_consumption(mpg, temperature, ac_on)
 
 @app.post("/predict")
-def predict(make: str, model: str, road_type: str,
-            temperature: float, ac_on: bool):
-    result = predict_consumption(make, model, road_type, temperature, ac_on)
+def predict(trip: TripInput):
+    result = predict_consumption(trip.make, trip.model, 
+                                 trip.road_type, trip.temperature, trip.ac_on)
     return {"consumption_rate": result}
