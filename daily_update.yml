@@ -1,0 +1,38 @@
+name: Daily Fuel Price Update
+
+on:
+  schedule:
+    # يعمل كل يوم الساعة 6 صباحاً بتوقيت القاهرة (3:00 AM UTC)
+    - cron: '0 3 * * *'
+  workflow_dispatch: # يسمح بتشغيله يدوياً من واجهة GitHub للاختبار
+
+jobs:
+  update-prices:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Update Script
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: python update_fuel_prices.py
+
+      - name: Commit and Push if changed
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add fuel_prices.json
+          git diff --staged --quiet || git commit -m "chore: update fuel prices"
+          git push
