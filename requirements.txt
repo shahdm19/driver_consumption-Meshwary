@@ -11,3 +11,4 @@ python-dotenv
 duckduckgo_search
 tavily-python
 google-generativeai
+tenacity

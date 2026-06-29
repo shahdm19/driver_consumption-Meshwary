@@ -1,0 +1,173 @@
+[
+  {
+    "make": "Nissan",
+    "model": "Sunny",
+    "engine_displacement_liters": 1.498,
+    "engine_cylinders": 4,
+    "drive": "FWD",
+    "fuel_type": "Regular Gasoline",
+    "turbocharger": false
+  },
+  {
+    "make": "Nissan",
+    "model": "Sentra",
+    "engine_displacement_liters": 1.598,
+    "engine_cylinders": 4,
+    "drive": "FWD",
+    "fuel_type": "Regular Gasoline",
+    "turbocharger": false
+  },
+  {
+    "make": "Hyundai",
+    "model": "Elentra",
+    "engine_displacement_liters": 1.6,
+    "engine_cylinders": 4,
+    "drive": "FWD",
+    "fuel_type": "Regular Gasoline",
+    "turbocharger": false
+  },
+  {
+    "make": "Chery",
+    "model": "Arrizo 5",
+    "engine_displacement_liters": 1.5,
+    "engine_cylinders": 4,
+    "drive": "FWD",
+    "fuel_type": "Regular Gasoline",
+    "turbocharger": false
+  },
+  {
+    "make": "Toyota",
+    "model": "Corolla",
+    "engine_displacement_liters": 1.6,
+    "engine_cylinders": 4,
+    "drive": "FWD",
+    "fuel_type": "Regular Gasoline",
+    "turbocharger": false
+  },
+  {
+    "make": "Fiat",
+    "model": "Tipo",
+    "engine_displacement_liters": 1.4,
+    "engine_cylinders": 4,
+    "drive": "FWD",
+    "fuel_type": "Regular Gasoline",
+    "turbocharger": false
+  },
+  {
+    "make": "Suzuki",
+    "model": "Dzire",
+    "engine_displacement_liters": 1.2,
+    "engine_cylinders": 4,
+    "drive": "FWD",
+    "fuel_type": "Regular Gasoline",
+    "turbocharger": false
+  },
+  {
+    "make": "Kia",
+    "model": "sportage",
+    "engine_displacement_liters": 1.6,
+    "engine_cylinders": 4,
+    "drive": "FWD",
+    "fuel_type": "Regular Gasoline",
+    "turbocharger": false
+  },
+  {
+    "make": "Suzuki",
+    "model": "Swift",
+    "engine_displacement_liters": 1.2,
+    "engine_cylinders": 4,
+    "drive": "FWD",
+    "fuel_type": "Premium Gasoline",
+    "turbocharger": false
+  },
+  {
+    "make": "Chery",
+    "model": "Tiggo 7",
+    "engine_displacement_liters": 1.5,
+    "engine_cylinders": 4,
+    "drive": "FWD",
+    "fuel_type": "Regular Gasoline",
+    "turbocharger": true
+  },
+  {
+    "make": "Chery ",
+    "model": "Tiggo 3",
+    "engine_displacement_liters": 1.6,
+    "engine_cylinders": 4,
+    "drive": "FWD",
+    "fuel_type": "Regular Gasoline",
+    "turbocharger": false
+  },
+  {
+    "make": "Kia",
+    "model": "sportage",
+    "engine_displacement_liters": 1.6,
+    "engine_cylinders": 4,
+    "drive": "FWD",
+    "fuel_type": "Premium Gasoline",
+    "turbocharger": true
+  },
+  {
+    "make": "Suzuki",
+    "model": "Dzire",
+    "engine_displacement_liters": 1.2,
+    "engine_cylinders": 3,
+    "drive": "FWD",
+    "fuel_type": "Regular Gasoline",
+    "turbocharger": false
+  },
+  {
+    "make": "Hyundai",
+    "model": "Tucson",
+    "engine_displacement_liters": 1.6,
+    "engine_cylinders": 4,
+    "drive": "FWD",
+    "fuel_type": "Premium Gasoline",
+    "turbocharger": true
+  },
+  {
+    "make": "Chevrolet ",
+    "model": "Cruze",
+    "engine_displacement_liters": 1.6,
+    "engine_cylinders": 4,
+    "drive": "FWD",
+    "fuel_type": "Regular Gasoline",
+    "turbocharger": false
+  },
+  {
+    "make": "Chevrolet ",
+    "model": "lanos ",
+    "engine_displacement_liters": 1.5,
+    "engine_cylinders": 4,
+    "drive": "FWD",
+    "fuel_type": "Regular Gasoline",
+    "turbocharger": false
+  },
+  {
+    "make": "Nissan",
+    "model": "Sunny",
+    "engine_displacement_liters": 1.6,
+    "engine_cylinders": 4,
+    "drive": "FWD",
+    "fuel_type": "Petrol",
+    "turbocharger": false
+  },
+  {
+    "make": "BMW",
+    "model": "X5",
+    "engine_displacement_liters": 3.0,
+    "engine_cylinders": 6,
+    "drive": "AWD",
+    "fuel_type": "Gasoline",
+    "turbocharger": true
+  },
+  {
+    "make": "Hyundai",
+    "model": "Tucson",
+    "engine_displacement_liters": 2.0,
+    "engine_cylinders": 4,
+    "drive": "FWD",
+    "fuel_type": "Regular Gasoline",
+    "turbocharger": false
+  }
+]

@@ -10,6 +10,7 @@ from typing import Optional
 from pydantic import BaseModel
 from groq import Groq
 from dotenv import load_dotenv
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 
 LOCAL_DB_PATH = 'local_cars_db.json'
@@ -91,20 +92,27 @@ def load_local_db():
         local_cars_db = []
 
 def find_in_local_db(make: str, model: str, cc: Optional[float] = None) -> Optional[dict]:
-
     make_lower = make.lower().strip()
     model_lower = model.lower().strip()
     logging.info(f"Searching local DB for: {make} {model} (cc={cc})")
+    
+   
+    cc_in_liters = None
+    if cc is not None:
+        if cc > 10:
+            cc_in_liters = round(cc / 1000.0, 2)
+        else:
+            cc_in_liters = round(cc, 2)
     
     for car in local_cars_db:
         car_make = car.get('make', '').lower().strip()
         car_model = car.get('model', '').lower().strip()
      
         if car_make == make_lower and car_model == model_lower:
-            if cc is not None:
+            if cc_in_liters is not None:  
                 car_cc = car.get('engine_displacement_liters', 0)
-                if abs(car_cc - cc) < 0.05:
-                    logging.info(f"Found EXACT match in Local DB: {make} {model} {cc}L")
+                if abs(car_cc - cc_in_liters) < 0.05:  
+                    logging.info(f"Found EXACT match in Local DB: {make} {model} {cc_in_liters}L")
                     return {
                         "engine_displacement_liters": car.get('engine_displacement_liters'),
                         "engine_cylinders": car.get('engine_cylinders', 4),
@@ -141,7 +149,14 @@ def save_to_local_db(make: str, model: str, year: int, specs: dict):
             car['engine_displacement_liters'] == new_car['engine_displacement_liters']):
             logging.info(f"Car already exists in Local DB: {make} {model}")
             return
+        
     local_cars_db.append(new_car)
+    try:
+        with open(LOCAL_DB_PATH, 'w', encoding='utf-8') as f:
+            json.dump(local_cars_db, f, ensure_ascii=False, indent=4)
+        logging.info(f"✅ Saved {make} {model} to local DB file.")
+    except Exception as e:
+        logging.error(f"❌ Failed to write to local DB file: {e}")
     
 load_local_db()
 
@@ -291,13 +306,50 @@ def multi_query_search(make: str, model: str, year: int) -> str:
     return "\n\n=====\n\n".join(all_contexts) if all_contexts else ""
 
 
+# Retry Mechanism ---
+
+@retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
+def _call_groq_json(system_prompt: str, user_msg: str):
+    """Calls Groq for JSON extraction with automatic retry on Rate Limit."""
+    return client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_msg},
+        ],
+        temperature=0.1,
+        response_format={"type": "json_object"},
+    )
+
+
+@retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
+def _call_groq_recommendations(prompt: str):
+    """Calls Groq for recommendations with automatic retry on Rate Limit."""
+    return client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        max_tokens=600,
+        temperature=0.7,
+        messages=[{"role": "user", "content": prompt}],
+    )
+
+@retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
+def _call_gemini_recommendations(prompt: str):
+    """Calls Gemini for recommendations with automatic retry on Rate Limit."""
+    return gemini_model.generate_content(
+        prompt,
+        generation_config={
+            "temperature": 0.7,
+            "max_output_tokens": 600,
+        }
+    )
+
+@retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
 def _call_gemini_for_json(system_prompt: str, user_msg: str) -> str:
-    
+    """Calls Gemini for JSON extraction with automatic retry on Rate Limit."""
     if not GEMINI_AVAILABLE:
         raise RuntimeError("Gemini not available")
     
     full_prompt = f"{system_prompt}\n\n---\n\n{user_msg}\n\nReturn ONLY valid JSON, no markdown."
-    
     response = gemini_model.generate_content(
         full_prompt,
         generation_config={
@@ -306,6 +358,7 @@ def _call_gemini_for_json(system_prompt: str, user_msg: str) -> str:
         }
     )
     return response.text
+
 
 def extract_specs_with_llm(
     make: str,
@@ -339,33 +392,25 @@ Return ONLY a valid JSON object as instructed.
         content = None
         
         try:
-            response = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_msg},
-                ],
-                temperature=0.1,
-                response_format={"type": "json_object"},
-            )
+            logging.info(" Calling Groq (with retry)...")
+            response = _call_groq_json(system_prompt, user_msg)  
             content = response.choices[0].message.content
             logging.info("✅ Groq responded")
         except Exception as groq_err:
-            logging.warning(f"Groq failed: {type(groq_err).__name__}")
+            logging.warning(f"Groq failed after retries: {type(groq_err).__name__}")
             
-    
             if GEMINI_AVAILABLE:
-                logging.info("🔄 Falling back to Gemini...")
+                logging.info("🔄 Falling back to Gemini (with retry)...")
                 try:
-                    content = _call_gemini_for_json(system_prompt, user_msg)
-                    logging.info("Gemini responded")
+                    content = _call_gemini_for_json(system_prompt, user_msg)  
+                    logging.info("✅ Gemini responded")
                 except Exception as gemini_err:
-                    logging.error(f"Gemini also failed: {gemini_err}")
+                    logging.error(f"Gemini also failed after retries: {gemini_err}")
                     return {}
             else:
                 logging.error(f" No fallback available: {groq_err}")
                 return {}
-        
+            
         if not content:
             logging.error("No content from either LLM")
             return {}
@@ -593,25 +638,14 @@ You are an expert automotive advisor with deep knowledge of Egyptian roads, fuel
 • [Fourth specific recommendation]
 """
     try:
-        message = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            max_tokens=600,
-            temperature=0.7,
-            messages=[{"role": "user", "content": prompt}],
-        )
+        message = _call_groq_recommendations(prompt)  # <--- هنا التعديل
         return message.choices[0].message.content
     except Exception as groq_err:
         logging.warning(f"Groq failed for recommendations: {type(groq_err).__name__}")
         if GEMINI_AVAILABLE:
-            logging.info("Falling back to Gemini for recommendations...")
+            logging.info("🔄 Falling back to Gemini for recommendations...")
             try:
-                response = gemini_model.generate_content(
-                    prompt,
-                    generation_config={
-                        "temperature": 0.7,
-                        "max_output_tokens": 600,
-                    }
-                )
+                response = _call_gemini_recommendations(prompt)  # <--- هنا التعديل
                 return response.text
             except Exception as gemini_err:
                 logging.error(f" Gemini also failed for recommendations: {gemini_err}")
