@@ -312,7 +312,7 @@ def multi_query_search(make: str, model: str, year: int) -> str:
 def _call_groq_json(system_prompt: str, user_msg: str):
     """Calls Groq for JSON extraction with automatic retry on Rate Limit."""
     return client.chat.completions.create(
-        model="mixtral-8x7b-32768",
+        model="llama-3.1-8b-instant",
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_msg},
@@ -326,7 +326,7 @@ def _call_groq_json(system_prompt: str, user_msg: str):
 def _call_groq_recommendations(prompt: str):
     """Calls Groq for recommendations with automatic retry on Rate Limit."""
     return client.chat.completions.create(
-        model="mixtral-8x7b-32768",
+        model="llama-3.1-8b-instant",
         max_tokens=600,
         temperature=0.7,
         messages=[{"role": "user", "content": prompt}],
