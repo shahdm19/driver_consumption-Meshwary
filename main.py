@@ -312,7 +312,7 @@ def multi_query_search(make: str, model: str, year: int) -> str:
 def _call_groq_json(system_prompt: str, user_msg: str):
     """Calls Groq for JSON extraction with automatic retry on Rate Limit."""
     return client.chat.completions.create(
-        model="llama-3.1-8b-instant",
+        model="mixtral-8x7b-32768",
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_msg},
@@ -326,7 +326,7 @@ def _call_groq_json(system_prompt: str, user_msg: str):
 def _call_groq_recommendations(prompt: str):
     """Calls Groq for recommendations with automatic retry on Rate Limit."""
     return client.chat.completions.create(
-        model="llama-3.1-8b-instant",
+        model="mixtral-8x7b-32768",
         max_tokens=600,
         temperature=0.7,
         messages=[{"role": "user", "content": prompt}],
@@ -373,7 +373,12 @@ def extract_specs_with_llm(
         if not context:
             logging.warning(f"No context provided to LLM (field={expect_field})")
             return {}
-
+        
+        MAX_CONTEXT_LENGTH = 4000
+        if len(context) > MAX_CONTEXT_LENGTH:
+            logging.info(f"Truncating context from {len(context)} to {MAX_CONTEXT_LENGTH} chars")
+            context = context[:MAX_CONTEXT_LENGTH] 
+        
         user_msg = f"""
 Target Car:
 - Make: {make}
