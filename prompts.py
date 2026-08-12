@@ -1,17 +1,4 @@
-"""Long prompt strings for LLM extraction and recommendations.
 
-These strings are preserved VERBATIM from the original single-file
-implementation — no whitespace or wording changes, because any change would
-alter LLM behaviour and violate the "same prompts' content" constraint.
-
-Templates:
-    MAIN_SYSTEM_PROMPT                         - full spec extraction (Groq/Gemini)
-    DISP_PROMPT                                - dedicated displacement extraction
-    TURBO_PROMPT                               - dedicated turbo extraction
-    SPEC_EXTRACTION_USER_MSG_TEMPLATE          - user message paired with the
-                                                  system prompts above
-    RECOMMENDATIONS_PROMPT_TEMPLATE            - free-text recommendations prompt
-"""
 from __future__ import annotations
 
 MAIN_SYSTEM_PROMPT: str = """\
@@ -39,7 +26,7 @@ FIELD EXTRACTION GUIDE (look for BOTH English AND Arabic synonyms):
     English: "gasoline", "petrol", "diesel", "hybrid"
     Arabic: "بنزين", "سولار", "ديزل", "هايبرد", "وقود"
     
-    ⚠️ CRITICAL - FUEL TYPE MAPPING (Egyptian → US Model categories):
+     CRITICAL - FUEL TYPE MAPPING (Egyptian → US Model categories):
     The downstream ML model ONLY accepts these 4 exact string values.
     You MUST convert any Egyptian fuel type to one of them:
     
@@ -56,7 +43,7 @@ FIELD EXTRACTION GUIDE (look for BOTH English AND Arabic synonyms):
     Arabic (has turbo): "توربو", "شاحن هواء", "تيربو"
     Arabic (no turbo): "تنفس طبيعي", "غير توربو"
     
-    ⚠️ DEFAULT RULE for Egyptian market:
+     DEFAULT RULE for Egyptian market:
     The MAJORITY of cars sold in Egypt are naturally aspirated (no turbo).
     If the search results DO NOT explicitly mention "turbo" or "توربو",
     you MUST return `false` (not null). Only return `true` if you find
@@ -127,8 +114,7 @@ Search Results:
 Extract the specifications for THIS specific car ONLY.
 Return ONLY a valid JSON object as instructed."""
 
-# Free-text recommendations prompt.
-# Trailing newline preserved to match the original f-string exactly.
+
 RECOMMENDATIONS_PROMPT_TEMPLATE: str = """\
 You are an expert automotive advisor with deep knowledge of Egyptian roads, fuel efficiency, and road safety.
 
@@ -145,10 +131,10 @@ You are an expert automotive advisor with deep knowledge of Egyptian roads, fuel
 - Predicted Consumption: {consumption} L/100km
 - Route: {from_location} → {to_location}
 
-🛣️ ROUTE CONTEXT (analysis of the road):
+ ROUTE CONTEXT (analysis of the road):
 {route_context}
 
-📝 REQUIREMENTS:
+ REQUIREMENTS:
 1. Provide EXACTLY 4 recommendations - not more, not less.
 2. Each recommendation MUST be directly tied to the specific trip conditions above (car model, road type, weather, route, AC usage).
 3. Focus on ACTIONABLE fuel-saving tips that consider:
@@ -158,13 +144,13 @@ You are an expert automotive advisor with deep knowledge of Egyptian roads, fuel
 4. Be SPECIFIC to Egyptian driving conditions (traffic patterns, road quality, weather).
 5. Each tip should be 2-3 sentences maximum, practical and directly applicable.
 
-🚫 DO NOT:
+ DO NOT:
 - Give generic advice like "drive smoothly" without context
 - Repeat the same tip in different words
 - Add introductions or conclusions (just the 4 tips)
 - Number them as "Tip 1, Tip 2" - just use clear bullet points
 
-📤 OUTPUT FORMAT:
+ OUTPUT FORMAT:
 • [First specific recommendation tied to route/weather/car]
 • [Second specific recommendation]
 • [Third specific recommendation]
