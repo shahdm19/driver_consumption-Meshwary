@@ -1,30 +1,7 @@
-"""FastAPI application: route handlers ONLY.
-
-All business logic lives in dedicated modules.  This file:
-    1. Configures logging (once).
-    2. Constructs the application singletons (``LocalCarsDB``,
-       ``WebSearcher``, ``LLMClient``, ``ConsumptionPredictor``) — replacing
-       the original module-level mutable globals.
-    3. Wires those singletons into the route handlers via explicit arguments
-       (dependency injection by hand).
-    4. Exposes the same endpoints, request/response shapes, and status codes
-       as the original single-file app.
-
-Endpoint contract (unchanged):
-    POST /predict          -> consumption_rate + recommendations + specs_used
-                              (or status="error" / "missing_critical_data")
-    GET  /health           -> {status, tavily_available, gemini_available}
-    GET  /ping             -> {pong: true}
-    GET  /debug/env        -> env-var presence (no values exposed)
-    GET  /debug/models     -> ML model load status
-"""
 from __future__ import annotations
-
 import os
 from typing import Any, Dict
-
 from fastapi import FastAPI
-
 from config import GEMINI_API_KEY, GROQ_API_KEY, TAVILY_API_KEY
 from llm_client import LLMClient
 from llm_extraction import apply_safety_net, get_car_specs
@@ -35,15 +12,8 @@ from prediction import ConsumptionPredictor
 from recommendations import get_recommendations
 from search import WebSearcher
 
-# ---- one-time setup --------------------------------------------------------
 setup_logging()
 logger = get_logger(__name__)
-
-# ---- application singletons (constructed once at import time) -------------
-# These replace the original module-level globals (``local_cars_db``,
-# ``client``, ``gemini_model``, ``tavily_client``, ``city_model``,
-# ``highway_model``).  They are passed explicitly to every function that
-# needs them — no function reaches into a global.
 local_db = LocalCarsDB()
 searcher = WebSearcher(api_key=TAVILY_API_KEY)
 llm_client = LLMClient()
@@ -51,21 +21,9 @@ predictor = ConsumptionPredictor()
 
 app = FastAPI()
 
-
-# --------------------------------------------------------------------------- #
-# Routes                                                                      #
-# --------------------------------------------------------------------------- #
-
 @app.post("/predict")
 def predict(trip: TripInput) -> Dict[str, Any]:
-    """Predict fuel consumption (L/100km) and return 4 personalized tips.
 
-    Response shape is identical to the original:
-        success                  -> {status, consumption_rate, recommendations, specs_used}
-        fetch failure            -> {status: "error", message}
-        missing critical data    -> {status: "missing_critical_data", message,
-                                     missing_fields, suggested_options}
-    """
     logger.info(
         "📡 Predict request: %s %s %s, cc=%s",
         trip.make, trip.model, trip.year, trip.cc,
@@ -115,7 +73,6 @@ def predict(trip: TripInput) -> Dict[str, Any]:
 
 @app.get("/health")
 def health() -> Dict[str, Any]:
-    """Health check endpoint."""
     return {
         "status": "ok",
         "tavily_available": searcher.available,
@@ -125,13 +82,11 @@ def health() -> Dict[str, Any]:
 
 @app.get("/ping")
 def ping() -> Dict[str, bool]:
-    """Ultra-simple health check - no dependencies."""
     return {"pong": True}
 
 
 @app.get("/debug/env")
 def debug_env() -> Dict[str, Any]:
-    """Check what env vars are loaded (without exposing values)."""
     return {
         "groq_key_set": bool(GROQ_API_KEY),
         "tavily_key_set": bool(TAVILY_API_KEY),
@@ -144,7 +99,6 @@ def debug_env() -> Dict[str, Any]:
 
 @app.get("/debug/models")
 def debug_models() -> Dict[str, Any]:
-    """Check if the ML models are loaded correctly."""
     return {
         "city_model_loaded": predictor.city_model is not None,
         "highway_model_loaded": predictor.highway_model is not None,
