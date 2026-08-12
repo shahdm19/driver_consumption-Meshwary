@@ -1,27 +1,5 @@
-"""Low-level LLM client: Groq primary, Gemini fallback.
-
-THIS MODULE IS THE SINGLE SOURCE OF TRUTH FOR THE PRIMARY→FALLBACK PATTERN.
-
-The original code implemented the "call Groq, on failure fall back to Gemini"
-pattern TWICE — once in ``extract_specs_with_llm`` (for JSON extraction) and
-once in ``get_recommendations`` (for free-text).  Both copies are gone; the
-pattern now lives in exactly one method: :meth:`LLMClient._call_with_fallback`.
-
-Public API (used by every call site):
-    - :meth:`LLMClient.extract_json`   — Groq→Gemini fallback for JSON output.
-    - :meth:`LLMClient.generate_text`  — Groq→Gemini fallback for free-text.
-
-Call sites (must NOT re-implement fallback):
-    - llm_extraction.extract_specs_with_llm   -> llm_client.extract_json(...)
-    - recommendations.get_recommendations     -> llm_client.generate_text(...)
-
-Both public methods delegate to :meth:`_call_with_fallback`, which is the only
-place the try/except + Gemini-availability check + logging lives.
-"""
 from __future__ import annotations
-
 from typing import Callable, Optional
-
 from config import (
     GEMINI_API_KEY,
     GEMINI_JSON_TEMPERATURE,
@@ -39,7 +17,6 @@ from logging_config import get_logger
 
 logger = get_logger(__name__)
 
-# Lazily imported so a missing package does not crash startup.
 try:
     from groq import Groq
     GROQ_AVAILABLE: bool = True
@@ -54,25 +31,17 @@ except ImportError:
 
 
 class LLMClient:
-    """Wraps Groq (primary) and Gemini (fallback) clients.
-
-    Constructed once in ``main.py`` and passed explicitly to every caller
-    (no global instance).
-    """
-
     def __init__(self) -> None:
         self.groq = None
         self.gemini_model = None
         self.gemini_available: bool = False
 
-        # ---- Groq (primary) ----
         if GROQ_AVAILABLE and GROQ_API_KEY:
             self.groq = Groq(api_key=GROQ_API_KEY)
             logger.info("Groq client initialized")
         else:
             logger.warning("Groq client not initialized (missing key or library)")
 
-        # ---- Gemini (fallback) ----
         if GEMINI_IMPORT_AVAILABLE and GEMINI_API_KEY:
             try:
                 genai.configure(api_key=GEMINI_API_KEY)
@@ -86,10 +55,6 @@ class LLMClient:
                 " google-generativeai not installed. Gemini fallback disabled."
             )
             logger.warning("   Install with: pip install google-generativeai")
-
-    # ------------------------------------------------------------------ #
-    # Low-level primitives (each decorated with the shared RETRY_POLICY)  #
-    # ------------------------------------------------------------------ #
 
     @RETRY_POLICY
     def _groq_json(self, system_prompt: str, user_msg: str) -> str:
@@ -144,9 +109,6 @@ class LLMClient:
         )
         return resp.text
 
-    # ------------------------------------------------------------------ #
-    # THE single shared fallback helper                                  #
-    # ------------------------------------------------------------------ #
 
     def _call_with_fallback(
         self,
@@ -156,28 +118,7 @@ class LLMClient:
         label: str,
         failure_default: str,
     ) -> str:
-        """Call ``primary``; on exception, call ``fallback`` if available.
 
-        This method is the SINGLE source of truth for the Groq→Gemini fallback
-        pattern.  Every call site goes through it; no caller may re-implement
-        the try/except + Gemini-availability check.
-
-        Args:
-            primary: zero-arg callable performing the Groq call (already bound
-                with its prompt/system-prompt args).
-            fallback: zero-arg callable performing the Gemini call, or ``None``
-                if Gemini is not available (the public methods pre-compute this
-                so the helper does not need to know about ``self.gemini_available``
-                — but it does check it defensively).
-            label: human-readable label for log lines (e.g. "JSON extraction").
-            failure_default: value to return if both providers fail (``""`` for
-                JSON callers that will check ``if not content``; a longer string
-                for recommendations).
-
-        Returns:
-            The content string from whichever provider succeeded, or
-            ``failure_default`` if both failed.
-        """
         try:
             content = primary()
             logger.info("✅ Groq responded (%s)", label)
@@ -200,10 +141,6 @@ class LLMClient:
             logger.error(" No fallback available for %s: %s", label, groq_err)
             return failure_default
 
-    # ------------------------------------------------------------------ #
-    # Public API (used by llm_extraction and recommendations)            #
-    # ------------------------------------------------------------------ #
-
     def extract_json(
         self,
         system_prompt: str,
@@ -211,11 +148,6 @@ class LLMClient:
         *,
         label: str = "JSON extraction",
     ) -> str:
-        """Groq→Gemini fallback for JSON extraction.
-
-        Returns the raw content string (possibly empty).  The caller is
-        responsible for parsing it as JSON.
-        """
         fallback = (
             (lambda: self._gemini_json(system_prompt, user_msg))
             if self.gemini_available
@@ -235,11 +167,7 @@ class LLMClient:
         label: str = "text generation",
         failure_default: str = "",
     ) -> str:
-        """Groq→Gemini fallback for free-text generation.
 
-        Returns the content string, or ``failure_default`` if both providers
-        fail.
-        """
         fallback = (
             (lambda: self._gemini_text(prompt))
             if self.gemini_available
