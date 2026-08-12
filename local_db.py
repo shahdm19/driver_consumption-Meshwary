@@ -1,14 +1,5 @@
-"""Local JSON-file cache of car specs.
 
-Replaces the original module-level ``local_cars_db = []`` global list with a
-small ``LocalCarsDB`` class.  All callers receive an instance of this class
-(constructed once in ``main.py``) and never touch global mutable state.
-
-File format (``local_cars_db.json``) is unchanged, so existing caches load
-without migration.
-"""
 from __future__ import annotations
-
 import json
 import os
 from pathlib import Path
@@ -22,18 +13,10 @@ logger = get_logger(__name__)
 
 
 class LocalCarsDB:
-    """Wraps the ``local_cars_db.json`` file.
-
-    The in-memory list is private (``self._cars``); callers interact via
-    :meth:`find` and :meth:`save`.  No module-level mutable state.
-    """
-
     def __init__(self, path: Path = LOCAL_DB_PATH) -> None:
         self.path: Path = path
         self._cars: List[Dict[str, Any]] = []
         self._load()
-
-    # ---- internal ----------------------------------------------------------
 
     def _load(self) -> None:
         """Load from disk, or start empty if the file is missing/corrupt."""
@@ -48,25 +31,13 @@ class LocalCarsDB:
         else:
             logger.warning("%s not found. Starting with empty DB.", self.path)
 
-    # ---- public API --------------------------------------------------------
-
     def find(
         self,
         make: str,
         model: str,
         cc: Optional[float] = None,
     ) -> Optional[Dict[str, Any]]:
-        """Find a car by make+model, optionally matching engine displacement.
 
-        Returns a specs dict built by :func:`utils.build_specs_dict` (single
-        source of truth for the shape + defaults), or ``None`` if no match.
-
-        Matching rules (preserved exactly from the original ``find_in_local_db``):
-            - make and model are case-insensitive, stripped.
-            - If ``cc`` is given, the stored ``engine_displacement_liters``
-              must be within ``DISPLACEMENT_MATCH_TOLERANCE_L`` litres.
-            - If ``cc`` is omitted, the first make+model match wins.
-        """
         make_lower = make.lower().strip()
         model_lower = model.lower().strip()
         logger.info("Searching local DB for: %s %s (cc=%s)", make, model, cc)
@@ -92,12 +63,6 @@ class LocalCarsDB:
         return None
 
     def save(self, make: str, model: str, year: int, specs: Dict[str, Any]) -> None:
-        """Add a car record to the DB and persist to disk.
-
-        No-op if an identical make+model+displacement record already exists.
-        The record is built by :func:`utils.build_car_record` (which reuses
-        :func:`utils.build_specs_dict`) — no duplicate defaulting logic here.
-        """
         new_car = build_car_record(make, model, specs)
 
         for car in self._cars:
