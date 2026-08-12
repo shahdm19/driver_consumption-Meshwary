@@ -1,18 +1,5 @@
-"""LLM-based driving recommendations.
-
-Owns:
-    - Route classification tables (``LONG_DISTANCE_ROUTES`` / ``URBAN_ROUTES``).
-    - Route-context string builder (``get_route_context``).
-    - Age-category bucketing (``_age_category``).
-    - The recommendations entry point (``get_recommendations``).
-
-Does NOT contain any Groq→Gemini fallback logic — it calls
-:meth:`LLMClient.generate_text`, which is the single source of truth.
-"""
 from __future__ import annotations
-
 from typing import Tuple
-
 from config import DEFAULT_ENGINE_CYLINDERS
 from llm_client import LLMClient
 from logging_config import get_logger
@@ -21,11 +8,6 @@ from prompts import RECOMMENDATIONS_PROMPT_TEMPLATE
 from utils import calculate_car_age
 
 logger = get_logger(__name__)
-
-
-# --------------------------------------------------------------------------- #
-# Route classification tables — single source of truth                        #
-# --------------------------------------------------------------------------- #
 
 LONG_DISTANCE_ROUTES: set = {
     ("cairo", "alexandria"), ("alexandria", "cairo"),
@@ -48,22 +30,12 @@ URBAN_ROUTES: set = {
     ("cairo", "new cairo"), ("new cairo", "cairo"),
 }
 
-# Returned to the caller when both Groq and Gemini fail.
 RECOMMENDATIONS_FAILURE_DEFAULT: str = (
     "Unable to generate recommendations at this time. Please try again later."
 )
 
 
-# --------------------------------------------------------------------------- #
-# Helpers                                                                      #
-# --------------------------------------------------------------------------- #
-
 def _age_category(year: int) -> str:
-    """Bucket the car age into a descriptive category for the prompt.
-
-    Uses :func:`utils.calculate_car_age` (single source of truth for the
-    age calculation, shared with :mod:`prediction`).
-    """
     age = calculate_car_age(year)
     if age <= 2:
         return "new (less than 2 years old)"
@@ -75,12 +47,6 @@ def _age_category(year: int) -> str:
 
 
 def get_route_context(from_loc: str, to_loc: str, road_type: str) -> str:
-    """Return a short route-analysis string for the recommendations prompt.
-
-    Uses the named route tables above (single source of truth).  The branch
-    order and string contents are preserved EXACTLY from the original
-    ``_get_route_context``.
-    """
     from_loc = from_loc.strip().lower()
     to_loc = to_loc.strip().lower()
     route_tuple: Tuple[str, str] = (from_loc, to_loc)
@@ -132,22 +98,12 @@ def get_route_context(from_loc: str, to_loc: str, road_type: str) -> str:
     )
 
 
-# --------------------------------------------------------------------------- #
-# Public entry point                                                          #
-# --------------------------------------------------------------------------- #
-
 def get_recommendations(
     trip: TripInput,
     consumption: float,
     specs: dict,
     llm_client: LLMClient,
 ) -> str:
-    """Generate 4 personalized fuel-saving recommendations via LLM.
-
-    Uses :meth:`LLMClient.generate_text` — the SINGLE source of truth for the
-    Groq→Gemini fallback pattern.  This function does NOT contain any
-    try/except fallback logic.
-    """
     route_context = get_route_context(
         trip.from_location, trip.to_location, trip.road_type
     )
