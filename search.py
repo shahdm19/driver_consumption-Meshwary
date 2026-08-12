@@ -1,12 +1,4 @@
-"""Tavily web-search wrapper.
-
-Replaces the original ``_tavily_search`` + ``search_web`` + ``multi_query_search``
-trio.  ``search_web`` was a one-line wrapper around ``_tavily_search`` — both
-are consolidated into :meth:`WebSearcher.search`.  :meth:`multi_query_search`
-preserves the original multi-query fan-out and early-stop logic.
-"""
 from __future__ import annotations
-
 import traceback
 from typing import List, Optional
 
@@ -28,7 +20,6 @@ logger = get_logger(__name__)
 
 
 class WebSearcher:
-    """Wraps the Tavily client.  Falls back to empty context if unavailable."""
 
     def __init__(self, api_key: Optional[str] = None) -> None:
         self.client = None
@@ -44,18 +35,10 @@ class WebSearcher:
 
     @property
     def available(self) -> bool:
-        """True iff a Tavily client is wired up (used by /health)."""
         return self.client is not None
 
-    # ---- single query ------------------------------------------------------
 
     def search(self, query: str) -> str:
-        """Run a single Tavily search and return a formatted context string.
-
-        Returns ``""`` if the client is unavailable or the call fails.  This
-        method is the SINGLE entry point for raw Tavily access — there is no
-        longer a separate ``_tavily_search`` + ``search_web`` pair.
-        """
         if not self.client:
             return ""
         try:
@@ -78,14 +61,8 @@ class WebSearcher:
             logger.error("Tavily search failed: %s\n%s", e, traceback.format_exc())
             return ""
 
-    # ---- multi query -------------------------------------------------------
 
     def multi_query_search(self, make: str, model: str, year: int) -> str:
-        """Run several targeted queries and stop early once enough context.
-
-        The query list and the early-stop threshold (``MULTI_QUERY_MIN_CONTEXTS``)
-        are preserved exactly from the original ``multi_query_search``.
-        """
         queries = [
             f'"{make} {model}" {year} engine displacement cc Egypt specifications',
             f"{make} {model} {year} مواصفات المحرك سعة سي سي مصر",
